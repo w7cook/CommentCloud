@@ -1,0 +1,55 @@
+
+
+.CommentHeader {
+display: block;
+font-family: verdana, sans-serif;
+font-size: 10px;
+height: 12px;
+}
+
+.CommentAuthor {
+font-family: verdana, sans-serif;
+font-size: 10px;
+font-weight: bold;
+}
+
+.CommentSubmitButton {
+vertical-align:top;
+}
+
+
+.CommentDate {
+padding-left: 5.109375px;
+}
+
+.CommentEntry {
+background-attachment: scroll;
+background-clip: border-box;
+background-color: rgb(238, 238, 255);
+background-image: none;
+background-origin: padding-box;
+background-size: auto;
+border-bottom-color: rgb(170, 170, 255);
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-left-color: rgb(170, 170, 255);
+border-left-style: solid;
+border-left-width: 1px;
+border-right-color: rgb(170, 170, 255);
+border-right-style: solid;
+border-right-width: 1px;
+border-top-color: rgb(170, 170, 255);
+border-top-style: solid;
+border-top-width: 1px;
+display: block;
+font-family: verdana, sans-serif;
+font-size: 10px;
+margin-bottom: 5px;
+margin-left: 20px;
+margin-right: 5px;
+margin-top: 5px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+padding-top: 5px;
+}
