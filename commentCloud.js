@@ -32,7 +32,6 @@ function showCommentFun(link, tag) {
 function CommentSetup(appkey, jskey, pageTag) {
   CommentCurrentPage = pageTag;
   Parse.initialize(appkey, jskey);
-  //Parse.User.logOut();
   for (i = 0; i < document.links.length; i++) {
     var link = document.links[i];
     if (link.id.substring(0,8) == "Comment:") {
@@ -66,47 +65,28 @@ function checkUserNewComment(topicId, tag) {
   if (currentUser) {
     return createNewCommentBlock(topicId, tag);
   } else {
-    return createNewUserForm(topicId, tag);
+    return createSigninForm(topicId, tag);
   }
 }
 
-function createNewUserForm(topicId, tag) {
-  var form = document.createElement("form");
-  form.method = "put";
-  form.className = "CommentEntry";
-
-  var login = function() {
-    try {
-      var name = form.elements["name"].value;
-      var pw = form.elements["password"].value;
-      console.log("TESTING " + name + "/" + pw + " for " + tag);
-      Parse.User.logIn(name, pw, {
-        success: function(user) {
-          var entry = checkUserNewComment(topicId, tag);
-          console.log("last " + holder + " child " + holder.lastChild + " entry " + entry);
-          form.parentNode.replaceChild(entry, form);
-        },
-        error: function(user, error) {
-          // Show the error message somewhere and let the user try again.
-          alert("Error: " + error.code + " " + error.message);
-        }
-      });
-    } catch (err) {
-      alert(err.message);
-    }
-    return false;
-  };
-  var keypress = function(event) {
+function makeCarriageReturnFun(action) {
+  return function(event) {
     var chCode = ('charCode' in event) ? event.charCode : event.keyCode;
     if (chCode == 13)
-      login();
+      action();
   }
+}
+
+function createUsernameEmailFields(form, action, user) {
   var part = document.createElement("input");
   part.type = "text";
-  part.name = "name";
-  setupDefaultText(part, "<user name>");
+  part.name = "username";
+  if (user)
+    part.value = user.get("username");
+  else
+    setupDefaultText(part, "<user name>");
   part.className = "CommentAuthorInput";
-  part.onkeypress = keypress;
+  part.onkeypress = makeCarriageReturnFun(action);
   form.appendChild(part);
 
   form.appendChild(document.createTextNode("Password:"));
@@ -114,8 +94,82 @@ function createNewUserForm(topicId, tag) {
   part.type = "password";
   part.name = "password";
   part.className = "CommentAuthorInput";
-  part.onkeypress = keypress;
+  part.onkeypress = makeCarriageReturnFun(action);
   form.appendChild(part);
+}
+
+function checkValidData(text) {
+  return text != "" && text[0] != "<" && text[text.length - 1] != ">";
+}
+
+function createSigninForm(topicId, tag) {
+  var form = document.createElement("form");
+  form.className = "CommentEntry";
+
+  var needForgot = true;
+  var login = function() {
+    try {
+      var username = form.elements["username"].value;
+      var pw = form.elements["password"].value;
+      if (!(checkValidData(username) && checkValidData(pw))) {
+        alert("Please enter both user name and password");
+        return false;
+      }
+      console.log("TESTING " + username + "/" + pw + " for " + tag);
+      Parse.User.logIn(username, pw, {
+        success: function(user) {
+          var entry = checkUserNewComment(topicId, tag);
+          form.parentNode.replaceChild(entry, form);
+        },
+        error: function(user, error) {
+          // Show the error message somewhere and let the user try again.
+          alert("Error: " + error.code + " " + error.message);
+          if (needForgot) {
+            needForgot = false;
+            resetPassword = function () {
+              var email = form.elements["email"].value;
+              if (!checkValidData(email)) {
+                alert("Please fill in email");
+                return false;
+              }
+              Parse.User.requestPasswordReset(email, {
+                success: function(user) {
+                  var entry = checkUserNewComment(topicId, tag);
+                  form.parentNode.replaceChild(entry, form);
+                },
+                error: function(error) {
+                  alert("Error: " + error.code + " " + error.message);
+                }
+              });
+              return false;
+            }
+            
+            form.appendChild(document.createElement("br"));
+  
+            part = document.createElement("input");
+            part.type = "text";
+            part.name = "email";
+            setupDefaultText(part, "<email>");
+            part.onkeypress = makeCarriageReturnFun(resetPassword);
+            part.className = "CommentAuthorInput";
+            form.appendChild(part);
+  
+            part = document.createElement("input");
+            part.type = "button";
+            part.value = "Reset Password";
+            part.className = "CommentAuthorInput";
+            part.onclick = resetPassword;
+            form.appendChild(part);
+          }
+          return false;
+        }
+      });
+    } catch (err) {
+      alert(err.message);
+    }
+    return false;
+  };
+  createUsernameEmailFields(form, login);
 
   part = document.createElement("input");
   part.type = "button";
@@ -125,25 +179,43 @@ function createNewUserForm(topicId, tag) {
   form.appendChild(part);
 
   part = document.createElement("input");
-  part.type = "text";
-  part.name = "email";
-  setupDefaultText(part, "<email>");
-  part.className = "CommentAuthorInput";
-  form.appendChild(part);
-
-  part = document.createElement("input");
   part.type = "button";
-  part.value = "Signup";
+  part.value = "Sign up";
   part.className = "CommentAuthorInput";
   part.onclick = function () {
+    var entry = createUserDetailForm(topicId, tag, null, function(user, handler) {
+      user.signUp(null, handler);
+    });
+    form.parentNode.replaceChild(entry, form);
+  }
+  form.appendChild(part);
+
+  return form;
+}
+
+function createUserDetailForm(topicId, tag, user, userAction) {
+  var form = document.createElement("form");
+  form.className = "CommentEntry";
+
+  signup = function () {
     try {
-      var name = form.elements["name"].value;
+      var username = form.elements["username"].value;
       var pw = form.elements["password"].value;
-      var user = new Parse.User();
-      user.set("username", name);
-      user.set("password", pw);
-      user.set("email", form.elements["email"].value);    
-      user.signUp(null, {
+      var email = form.elements["email"].value;
+      var realname = form.elements["realname"].value;
+      console.log("FOO " + user + ": " + (user != null || checkValidData(pw)));
+      if (!(checkValidData(username) && (user != null || checkValidData(pw)) && checkValidData(email) && checkValidData(realname))) {
+        alert("Please fill in all the fields xx");
+        return false;
+      }
+      if (!user)
+        user = new Parse.User();
+      user.set("username", username);
+      if (pw != "")
+        user.set("password", pw);
+      user.set("email", email);
+      user.set("realname", realname);
+      userAction(user, {
         success: function(user) {
           var entry = checkUserNewComment(topicId, tag);
           form.parentNode.replaceChild(entry, form);
@@ -158,6 +230,35 @@ function createNewUserForm(topicId, tag) {
     }
     return false;
   }
+  createUsernameEmailFields(form, signup, user);
+
+  part = document.createElement("input");
+  part.type = "text";
+  part.name = "realname";
+  if (user)
+    part.value = user.get("realname");
+  else
+    setupDefaultText(part, "<real name>");
+  part.onkeypress = makeCarriageReturnFun(signup);
+  part.className = "CommentAuthorInput";
+  form.appendChild(part);
+
+  part = document.createElement("input");
+  part.type = "text";
+  part.name = "email";
+  if (user)
+    part.value = user.get("email");
+  else
+    setupDefaultText(part, "<email>");
+  part.onkeypress = makeCarriageReturnFun(signup);
+  part.className = "CommentAuthorInput";
+  form.appendChild(part);
+
+  part = document.createElement("input");
+  part.type = "button";
+  part.value = user ? "Update Account" : "Sign up";
+  part.className = "CommentAuthorInput";
+  part.onclick = signup;
   form.appendChild(part);
 
   return form;
@@ -169,11 +270,14 @@ function setupDefaultText(part, text) {
     if (part.value == text)
       part.value = "";
     };
+  part.onblur = function () {
+    if (part.value == "")
+      part.value = text;
+    };
 }
 
 function createEditCommentBlock(topicId, tag, content) {
   var form = document.createElement("form");
-  form.method = "put";
   form.className = "CommentEntry";
 
   var part = document.createElement("textarea");
@@ -192,6 +296,29 @@ function createEditCommentBlock(topicId, tag, content) {
   part.value = "Submit";
   part.className = "CommentSubmitButton";
   form.appendChild(part);
+  
+  part = document.createElement("input");
+  part.type = "button";
+  part.value = "Account";
+  part.className = "CommentAuthorInput";
+  part.onclick = function () {
+    var entry = createUserDetailForm(topicId, tag, Parse.User.current(), function(user, handler) {
+      user.save(handler);
+    });
+    
+    part = document.createElement("input");
+    part.type = "button";
+    part.value = "Sign out";
+    part.className = "CommentAuthorInput";
+    part.onclick = function () {
+      Parse.User.logOut();
+      entry.parentNode.replaceChild(checkUserNewComment(topicId, tag), entry);
+    }
+    entry.appendChild(part);
+    form.parentNode.replaceChild(entry, form);
+  }
+  form.appendChild(part);
+  
   return form;
 }
 
@@ -202,6 +329,10 @@ function createNewCommentBlock(topicId, tag) {
     try {
       var currentUser = Parse.User.current();
       var content = form.elements["content"].value;
+      if (!checkValidData(content)) {
+        alert("Please enter a comment");
+        return false;
+      }
       setupDefaultText(form.elements["content"], "<comment>");
       console.log("NEW " + topicId + ":" + content);
       var topic = new Topic();
@@ -290,7 +421,6 @@ function showComments(topicId, tag) {
 }      
 
 function createCommentEntry(comment) {
-  var currentUser = Parse.User.current();
   var author = comment.get('author');
 
   var block = document.createElement("div");
@@ -302,7 +432,7 @@ function createCommentEntry(comment) {
   
   var part = document.createElement("span");
   part.className = "CommentAuthor";
-  part.innerHTML = CommentSanitizeLine(author.get('username'));
+  part.innerHTML = CommentSanitizeLine(author.get('realname'));
   header.appendChild(part);
 
   var part = document.createElement("span");
@@ -310,7 +440,7 @@ function createCommentEntry(comment) {
   part.innerHTML = comment.createdAt;
   header.appendChild(part);
   
-  if (author.id == currentUser.id) {
+  if (author.isCurrent()) {
     var part = document.createElement("a");
     part.className = "CommentEdit";
     part.innerHTML = "edit";
