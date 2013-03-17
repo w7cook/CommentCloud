@@ -61,8 +61,7 @@ function CommentSetup(appkey, jskey, pageTag) {
 }
 
 function checkUserNewComment(topicId, tag) {
-  var currentUser = Parse.User.current();
-  if (currentUser) {
+  if (Parse.User.current()) {
     return createNewCommentBlock(topicId, tag);
   } else {
     return createSigninForm(topicId, tag);
@@ -326,7 +325,6 @@ function createNewCommentBlock(topicId, tag) {
   var form = createEditCommentBlock(topicId, tag);
   form.onsubmit = function () { 
     try {
-      var currentUser = Parse.User.current();
       var content = form.elements["content"].value;
       if (!checkValidData(content)) {
         alert("Please enter a comment");
@@ -339,8 +337,8 @@ function createNewCommentBlock(topicId, tag) {
       var comment = new Comment();
       comment.set("topic", topic);
       comment.set("content", content);
-      comment.set("author", currentUser);
       comment.save().then(function(comment) {
+        comment.set("author", Parse.User.current()); // hack??
         var entry = createCommentEntry(comment);
         var holder = document.getElementById("CommentArea:" + tag);
         holder.firstChild.appendChild(entry);
@@ -456,6 +454,7 @@ function createCommentEntry(comment) {
           try {
             comment.set("content", edit.elements["content"].value);
             comment.save().then(function(comment) {
+              comment.set("author", Parse.User.current()); // hack??
               var entry = createCommentEntry(comment);
               edit.parentNode.replaceChild(entry, edit);
             }, function(error) {
