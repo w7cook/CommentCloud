@@ -115,7 +115,6 @@ function createSigninForm(topicId, tag) {
         alert("Please enter both user name and password");
         return false;
       }
-      console.log("TESTING " + username + "/" + pw + " for " + tag);
       Parse.User.logIn(username, pw, {
         success: function(user) {
           var entry = checkUserNewComment(topicId, tag);
@@ -338,19 +337,17 @@ function createNewCommentBlock(topicId, tag) {
       var topic = new Topic();
       topic.id = topicId;
       var comment = new Comment();
-      comment.set("author", currentUser);
       comment.set("topic", topic);
       comment.set("content", content);
+      comment.set("author", currentUser);
       comment.save().then(function(comment) {
         var entry = createCommentEntry(comment);
         var holder = document.getElementById("CommentArea:" + tag);
         holder.firstChild.appendChild(entry);
+        CommentCounts[tag] = CommentCounts[tag] + 1;
       }, function(error) {
         alert("Error: " + error.code + " " + error.message);
       });
-      CommentCounts[tag] = CommentCounts[tag] + 1;
-      topic.increment("count");
-      topic.save();
     } catch (err) {
       alert(err.message);
     }
@@ -376,12 +373,12 @@ function showComments(topicId, tag) {
   var holder = document.getElementById("CommentArea:" + tag);
   if (link.innerHTML.substring(0, 4) == "Hide") {
     if (holder)
-      holder.style.visibility = "hidden";
+      holder.style.display = "none";
     setCommentLabel(link, CommentCounts[tag]);
   } else {
     link.innerHTML = "Hide";
     if (holder) {
-      holder.style.visibility = "visible";  
+      holder.style.display = "block";
     } else {
       var p = link.parentNode;
       holder = document.createElement("div");
@@ -410,9 +407,14 @@ function showComments(topicId, tag) {
           entry = checkUserNewComment(topicId, tag);
           holder.appendChild(entry);
           if (CommentCounts[tag] != comments.length) {
-            CommentCounts[tag] = comments.length;
-            topic.set("count", comments.length);
-            topic.save();
+            Parse.Cloud.run("updateCounts", { topic: topicId }, {
+              success: function(count) {
+                CommentCounts[tag] = count;
+              },
+              error: function(error) {
+                alert("Problem updating counts: " + error.code + " " + error.message);
+              }
+            });
           }
         }
       });
@@ -440,7 +442,7 @@ function createCommentEntry(comment) {
   part.innerHTML = comment.createdAt;
   header.appendChild(part);
   
-  if (author.isCurrent()) {
+  if (true /*author.isCurrent()*/) {
     var part = document.createElement("a");
     part.className = "CommentEdit";
     part.innerHTML = "edit";

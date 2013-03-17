@@ -1,0 +1,14 @@
+{
+    "applications": {
+        "_default": {
+            "link": "comments"
+        }, 
+        "comments": {
+            "applicationId": "g7Ukr5GXnqtS6jqM5gUkSwfY4eyWHxERMkrhurR0", 
+            "masterKey": "7e2nG75iOmvvCVzCrlsCnQcZH92jgKENc7qeJC6i"
+        }
+    }, 
+    "global": {
+        "parseVersion": "1.2.2"
+    }
+}
